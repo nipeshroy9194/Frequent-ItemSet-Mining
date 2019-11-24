@@ -1,9 +1,4 @@
-pageRank/PageRank$InitialMapper.class
-pageRank/PageRank.class
-pageRank/PageRank$PRMapper.class
-pageRank/PageRank$InitialReducer.class
-pageRank/PageRank$DeltaMapper.class
-pageRank/PageRank$DeltaReducer.class
-pageRank/PageRank$PRReducer.class
-pageRank/DeltaCounter.class
-pageRank/Node.class
+fim/FreqItemsetMining$InitialMapper.class
+fim/FreqItemsetMining$InitialCombiner.class
+fim/FreqItemsetMining$InitialReducer.class
+fim/FreqItemsetMining.class

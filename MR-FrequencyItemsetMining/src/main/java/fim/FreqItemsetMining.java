@@ -11,6 +11,7 @@ import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.*;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
@@ -24,15 +25,13 @@ import org.apache.log4j.Logger;
 
 public class FreqItemsetMining extends Configured implements Tool {
 	private static final Logger logger = LogManager.getLogger(FreqItemsetMining.class);
-	private static final int K = 1000; // Initialize K for Synthetic Graph()
-	private static final int N = 10; // Initialize number of iterations
 
 	// ***************************************************************************
-	// First Map-Reduce Job - Creates Node vertices from input files.
+	// First Map-Reduce Job - Computes Itemset Frequency for k = 1
 	/*
-	 * This class defines a mapper which consumes the input files generated from Spark for the Synthetic Graph.
+	 * This class defines a mapper which consumes the pre-processed input files generated from first MR Job.
 	 */
-	public static class InitialMapper extends Mapper<Object, Text, Text, Text> {
+	public static class InitialMapper extends Mapper<Object, Text, Text, IntWritable> {
 		/**
 		 * Emits the graph structure as its generated from Spark.
 		 */
@@ -40,21 +39,42 @@ public class FreqItemsetMining extends Configured implements Tool {
 		public void map(final Object key, final Text value, final Context context) throws IOException, InterruptedException {
 			final StringTokenizer itr = new StringTokenizer(value.toString());
 			while (itr.hasMoreTokens()) {
-				String token = itr.nextToken().replace("(", "").replace(")", "");
-				String v1 = token.split(",")[0], v2 = token.split(",")[1];
-				context.write(new Text(v1), new Text(v2));
+				String token = itr.nextToken();
+				logger.info("Encountered " + token);
+				String[] items = itr.nextToken().split(",");
+				logger.info("Count " + items.length);
+				for(String item: items)
+					context.write(new Text(item), new IntWritable(1));
+//				String v1 = token.split(",")[0], v2 = token.split(",")[1];
+//				context.write(new Text(v1), new Text(v2));
 			}
 		}
 	}
 
-	public static class InitialReducer extends Reducer<Text, Text, Text, Text> {
+	public static class InitialCombiner extends Reducer<Text, IntWritable, Text, IntWritable> {
+		@Override
+		public void reduce(final Text key, final Iterable<IntWritable> values, final Context context) throws IOException, InterruptedException {
+			int partialSum = 0;
+			for(final IntWritable c : values)
+				partialSum += c.get();
+			context.write(key, new IntWritable(partialSum));
+		}
+	}
+
+	public static class InitialReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
 		/**
 		 * Generates Node objects for each vertex in the graph
 		 * Node has ID, Adjacency List and PageRank.
 		 */
 		@Override
-		public void reduce(final Text key, final Iterable<Text> values, final Context context) throws IOException, InterruptedException {
+		public void reduce(final Text key, final Iterable<IntWritable> values, final Context context) throws IOException, InterruptedException {
+			int sum = 0;
+			for(final IntWritable c : values)
+				sum += c.get();
 
+			//MinSupport should be greater than 3
+			if(sum > 3)
+				context.write(key, new IntWritable(sum));
 		}
 	}
 
@@ -64,28 +84,29 @@ public class FreqItemsetMining extends Configured implements Tool {
 	public int run(final String[] args) throws Exception {
 		
 		final Configuration conf = getConf();
-		Job job1 = Job.getInstance(conf, "Adjacency Lists");
-		job1.setJarByClass(FreqItemsetMining.class);
+		Job job = Job.getInstance(conf, "K1");
+		job.setJarByClass(FreqItemsetMining.class);
 
-		final Configuration jobConf = job1.getConfiguration();
+		final Configuration jobConf = job.getConfiguration();
 		jobConf.set("mapreduce.output.textoutputformat.separator", "\t");
 
-		job1.setMapperClass(InitialMapper.class);
-		job1.setReducerClass(InitialReducer.class);
+		job.setMapperClass(InitialMapper.class);
+		job.setCombinerClass(InitialCombiner.class);
+		job.setReducerClass(InitialReducer.class);
 
-		job1.setMapOutputKeyClass(Text.class);
-		job1.setMapOutputValueClass(Text.class);
+//		job1.setMapOutputKeyClass(Text.class);
+//		job1.setMapOutputValueClass(IntWritable.class);
 
-		job1.setOutputKeyClass(Text.class);
-		job1.setOutputValueClass(Text.class);
+		job.setOutputKeyClass(Text.class);
+		job.setOutputValueClass(IntWritable.class);
 
-		job1.setInputFormatClass(TextInputFormat.class);
-		job1.setOutputFormatClass(TextOutputFormat.class);
+		job.setInputFormatClass(TextInputFormat.class);
+		job.setOutputFormatClass(TextOutputFormat.class);
 
-		TextInputFormat.addInputPath(job1, new Path(args[0]));
-		TextOutputFormat.setOutputPath(job1, new Path(args[1], "adjList"));
+		TextInputFormat.addInputPath(job, new Path(args[0]));
+		TextOutputFormat.setOutputPath(job, new Path(args[1], "K1"));
 
-		return job1.waitForCompletion(true) ? 1 : 0;
+		return job.waitForCompletion(true) ? 1 : 0;
 
 		}
 

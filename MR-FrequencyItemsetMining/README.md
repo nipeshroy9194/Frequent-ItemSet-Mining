@@ -1,4 +1,4 @@
-# Map Reduce Cluster for calculating pageRank
+# Map Reduce Cluster for calculating Frequency Itemset Mining
 
 Code author
 -----------

@@ -1,10 +1,5 @@
 package fim;
 
-/**
-* @author: Burhan Sadliwala
-* @since: 2nd Nov, 2019
-*/
-
 import java.util.StringTokenizer;
 import java.io.IOException;
 
@@ -33,7 +28,7 @@ public class FreqItemsetMining extends Configured implements Tool {
 	 */
 	public static class InitialMapper extends Mapper<Object, Text, Text, IntWritable> {
 		/**
-		 * Emits the graph structure as its generated from Spark.
+		 * Emits the product id and a count of 1 for every time the product is found
 		 */
 		@Override
 		public void map(final Object key, final Text value, final Context context) throws IOException, InterruptedException {
@@ -48,6 +43,7 @@ public class FreqItemsetMining extends Configured implements Tool {
 	}
 
 	public static class InitialCombiner extends Reducer<Text, IntWritable, Text, IntWritable> {
+		/* Combiner to reduce Mapper output to Reducers and calculate local counts */
 		@Override
 		public void reduce(final Text key, final Iterable<IntWritable> values, final Context context) throws IOException, InterruptedException {
 			int partialSum = 0;
@@ -58,17 +54,14 @@ public class FreqItemsetMining extends Configured implements Tool {
 	}
 
 	public static class InitialReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
-		/**
-		 * Generates Node objects for each vertex in the graph
-		 * Node has ID, Adjacency List and PageRank.
-		 */
+		/* Reducer calculate product id and there frequencies */
 		@Override
 		public void reduce(final Text key, final Iterable<IntWritable> values, final Context context) throws IOException, InterruptedException {
 			int sum = 0;
 			for(final IntWritable c : values)
 				sum += c.get();
 
-			//MinSupport should be greater than 3
+			//MinSupport should be greater than 3 (Need to find a good min_support value)
 			if(sum > 3)
 				context.write(key, new IntWritable(sum));
 		}
@@ -78,7 +71,7 @@ public class FreqItemsetMining extends Configured implements Tool {
 
 	@Override
 	public int run(final String[] args) throws Exception {
-		
+		/* MR job to compute itemset frequencies for k = 1 */
 		final Configuration conf = getConf();
 		Job job = Job.getInstance(conf, "K1");
 		job.setJarByClass(FreqItemsetMining.class);
@@ -104,7 +97,7 @@ public class FreqItemsetMining extends Configured implements Tool {
 
 		return job.waitForCompletion(true) ? 1 : 0;
 
-		}
+	}
 
 
 	public static void main(final String[] args) {

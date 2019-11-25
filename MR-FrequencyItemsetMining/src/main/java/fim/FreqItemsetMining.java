@@ -40,13 +40,9 @@ public class FreqItemsetMining extends Configured implements Tool {
 			final StringTokenizer itr = new StringTokenizer(value.toString());
 			while (itr.hasMoreTokens()) {
 				String token = itr.nextToken();
-				logger.info("Encountered " + token);
 				String[] items = itr.nextToken().split(",");
-				logger.info("Count " + items.length);
 				for(String item: items)
 					context.write(new Text(item), new IntWritable(1));
-//				String v1 = token.split(",")[0], v2 = token.split(",")[1];
-//				context.write(new Text(v1), new Text(v2));
 			}
 		}
 	}

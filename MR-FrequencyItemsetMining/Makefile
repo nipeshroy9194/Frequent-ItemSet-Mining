@@ -6,6 +6,7 @@ hadoop.root=/usr/local/hadoop
 jar.name=MR-FIM-1.0.0.jar
 jar.path=target/${jar.name}
 job.name=fim.FreqItemsetMining
+# local.input=~/Downloads/input
 local.input=input
 local.output=output
 # Pseudo-Cluster Execution

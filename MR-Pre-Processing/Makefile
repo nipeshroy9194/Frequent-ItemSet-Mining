@@ -6,7 +6,8 @@ hadoop.root=/usr/local/hadoop
 jar.name=MR-Preprocess-1.0.0.jar
 jar.path=target/${jar.name}
 job.name=preprocess.DatasetPreProcessing
-local.input=input
+# local.input=input
+local.input=~/Downloads/instacart_data
 local.output=output
 # Pseudo-Cluster Execution
 hdfs.user.name=huser

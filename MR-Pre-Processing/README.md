@@ -1,8 +1,10 @@
-# Map Reduce Cluster for calculating pageRank
+# Map Reduce Cluster to Preprocess input Dataset
 
 Code author
 -----------
-Burhan Sadliwala
+- Burhan Sadliwala
+- Nipesh Roy
+- Xiang Wei
 
 Installation
 ------------

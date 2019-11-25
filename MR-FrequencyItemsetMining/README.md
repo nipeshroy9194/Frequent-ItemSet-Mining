@@ -2,7 +2,9 @@
 
 Code author
 -----------
-Burhan Sadliwala
+- Burhan Sadliwala
+- Nipesh Roy
+- Xiang Wei
 
 Installation
 ------------

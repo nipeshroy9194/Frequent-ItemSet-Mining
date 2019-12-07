@@ -76,8 +76,19 @@ public class FreqItemsetMining extends Configured implements Tool {
 	 * This class defines a mapper which consumes the output files generated from previous iteration.
 	 */
 	public static class SecondMapper extends Mapper<Object, Text, Text, IntWritable> {
-		Set<String> cached = new HashSet<>();
-
+		List<Integer[]> cached = new ArrayList<>();
+//        Set<Integer[]> cached = new TreeSet<>(new Comparator<Integer[]>() {
+//            @Override
+//            public int compare(Integer[] o1, Integer[] o2) {
+//                Arrays.sort(o1);
+//                Arrays.sort(o2);
+//                for(int i=0; i<o1.length; i++) {
+//                    if(o1[i]==o2[i]) continue;
+//                    return o1[i].compareTo(o2[i]);
+//                }
+//                return 0;
+//            }
+//        });
 		// TODO: Handle file cache
 //		@Override
 //		protected void setup(final Context context) throws IOException, InterruptedException {
@@ -111,26 +122,58 @@ public class FreqItemsetMining extends Configured implements Tool {
 			}
 		}
 
-		private String[] stringToArray(String itemString) {
-			List<String> tempList = new ArrayList<>();
+		private Integer[] stringToArray(String itemString) {
+			List<Integer> tempList = new ArrayList<>();
 			itemString = itemString.replace("(", "").replace(")", "");
 			for(String item: itemString.split(","))
-				tempList.add(item);
-			return tempList.toArray(new String[0]);
+				tempList.add(Integer.parseInt(item));
+			return tempList.toArray(new Integer[0]);
 		}
 
-		private String arrayToString(String[] items) {
+		private String arrayToString(Integer[] items) {
 			StringBuilder sb = new StringBuilder("(");
-			for(String item: items)
+			for(Integer item: items)
 				sb.append(item).append(",");
 			sb.deleteCharAt(sb.length() - 1);
 			sb.append(")");
 			return sb.toString();
 		}
 
-		private Set<String> generateCandidate() {
+		private Set<Integer[]> generateCandidates() {
+		    Set<Integer[]> tempCache = new TreeSet<>(new Comparator<Integer[]>() {
+                @Override
+                public int compare(Integer[] o1, Integer[] o2) {
+                    for(int i=0; i<o1.length; i++) {
+                        if(o1[i]==o2[i]) continue;
+                        return o1[i].compareTo(o2[i]);
+                    }
+                    return 0;
+                }
+            });
+		    int common = cached.get(0).length-1;
 
-			return null;
+            for(int i=0; i<cached.size();i++)
+                for(int j=i+1; j<cached.size(); j++) {
+                    Integer[] c1 = cached.get(i);
+                    Integer[] c2 = cached.get(j);
+                    boolean flag = true;
+                    for(int k=0; k<common; k++) {
+                        if(c1[k] != c2[k]) {
+                            flag = false;
+                            break;
+                        }
+                    }
+
+                    if(flag) {
+                        Integer[] tempCandidate = new Integer[common+2];
+                        for(int k=0; k<c1.length; k++)
+                            tempCandidate[k] = c1[k];
+                        tempCandidate[tempCandidate.length-1] = c2[c2.length-1];
+                        Arrays.sort(tempCandidate);
+                        tempCache.add(tempCandidate);
+                    }
+                }
+			return tempCache;
 		}
 
 		private void selfJoinm2() {

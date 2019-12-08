@@ -10,7 +10,7 @@ job.name=fim.FreqItemsetMining
 local.input=input
 local.output=output
 # Pseudo-Cluster Execution
-hdfs.user.name=huser
+hdfs.user.name=nipeshroy
 hdfs.input=input
 hdfs.output=output
 # AWS EMR Execution

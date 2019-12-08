@@ -1,11 +1,15 @@
 package fim;
 
+import java.io.*;
+import java.net.URI;
 import java.util.*;
-import java.io.IOException;
+
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.*;
@@ -79,23 +83,50 @@ public class FreqItemsetMining extends Configured implements Tool {
 		List<Integer[]> cached = new ArrayList<>();
 
 		// TODO: Handle file cache
-//		@Override
-//		protected void setup(final Context context) throws IOException, InterruptedException {
-//			URI[] cacheFiles = context.getCacheFiles();
-//			if (cacheFiles != null && cacheFiles.length > 0) {
-//				Path path = new Path(cacheFiles[0].toString());
-//				BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(path.getName())));
-//				String line = "";
-//				while ((line = br.readLine()) != null) {
-//					String X = line.split(",")[0];
-//					String Y = line.split(",")[1];
-//
-//					if (Integer.parseInt(X) <= MAX && Integer.parseInt(Y) <= MAX)
-//						cached.add(line.trim()); // All relationships (under MAX_filter) are added to HashSet.
-//				}
-//				br.close();
-//			}
-//		}
+		@Override
+		protected void setup(final Context context) throws IOException, InterruptedException {
+			System.out.println("Inside Setup");
+            Path[] cacheFiles = context.getLocalCacheFiles();
+            if(cacheFiles != null && cacheFiles.length > 0) {
+                for(Path cacheFile : cacheFiles) {
+                	System.out.println(cacheFile.toString());
+                    readFile(cacheFile);
+                }
+            }
+		}
+
+        private void readFile(Path cacheFile) throws IOException {
+			System.out.println(cacheFile.toString());
+            BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(cacheFile.getName())));
+            String line = "";
+            while ((line = br.readLine()) != null) {
+                final StringTokenizer itr = new StringTokenizer(line.toString());
+                while (itr.hasMoreTokens()) {
+                    String key = itr.nextToken();
+                    itr.nextToken();
+                    cached.add(stringToArray(key));
+                }
+            }
+            br.close();
+        }
+
+        private Integer[] stringToArray(String itemString) {
+            List<Integer> tempList = new ArrayList<>();
+            itemString = itemString.trim().replace("(", "").replace(")", "");
+            for(String item: itemString.split(","))
+                tempList.add(Integer.parseInt(item));
+            return tempList.toArray(new Integer[0]);
+        }
+
+        private String arrayToString(Integer[] items) {
+            StringBuilder sb = new StringBuilder("(");
+            for(Integer item: items)
+                sb.append(item).append(",");
+            sb.deleteCharAt(sb.length() - 1);
+            sb.append(")");
+            return sb.toString();
+        }
+
 		/**
 		 *
 		 */
@@ -114,23 +145,6 @@ public class FreqItemsetMining extends Configured implements Tool {
 						context.write(new Text(this.arrayToString(itemSet)), new IntWritable(1));
 				}
 			}
-		}
-
-		private Integer[] stringToArray(String itemString) {
-			List<Integer> tempList = new ArrayList<>();
-			itemString = itemString.replace("(", "").replace(")", "");
-			for(String item: itemString.split(","))
-				tempList.add(Integer.parseInt(item));
-			return tempList.toArray(new Integer[0]);
-		}
-
-		private String arrayToString(Integer[] items) {
-			StringBuilder sb = new StringBuilder("(");
-			for(Integer item: items)
-				sb.append(item).append(",");
-			sb.deleteCharAt(sb.length() - 1);
-			sb.append(")");
-			return sb.toString();
 		}
 
 		private Set<Integer[]> generateCandidates() {
@@ -198,6 +212,7 @@ public class FreqItemsetMining extends Configured implements Tool {
 	@Override
 	public int run(final String[] args) throws Exception {
 		/* MR job to compute itemset frequencies for k = 1 */
+        Integer K = 2;
 		final Configuration conf = getConf();
 		Job job = Job.getInstance(conf, "K1");
 		job.setJarByClass(FreqItemsetMining.class);
@@ -208,9 +223,6 @@ public class FreqItemsetMining extends Configured implements Tool {
 		job.setMapperClass(InitialMapper.class);
 		job.setCombinerClass(InitialCombiner.class);
 		job.setReducerClass(InitialReducer.class);
-
-//		job1.setMapOutputKeyClass(Text.class);
-//		job1.setMapOutputValueClass(IntWritable.class);
 
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(IntWritable.class);
@@ -223,36 +235,46 @@ public class FreqItemsetMining extends Configured implements Tool {
 
 		job.waitForCompletion(true);
 
-
+		Integer i = 2;
 		// TODO: Add distributed cache code
-		while(K-- > 1) {
-			final Configuration conf2 = getConf();
-			job = Job.getInstance(conf2, "K1");
-			job.setJarByClass(FreqItemsetMining.class);
+		while(i <= K) {
+		    Integer prevItr = i - 1;
+		    String prevPath = "K" + prevItr.toString();
+		    String currPath = "K" + i.toString();
 
-			final Configuration jobConf2 = job.getConfiguration();
-			jobConf2.set("mapreduce.output.textoutputformat.separator", "\t");
+            final Job job1 = Job.getInstance(conf, currPath);
+            job1.setJarByClass(FreqItemsetMining.class);
+            final Configuration jobConf1 = job1.getConfiguration();
+            jobConf1.set("mapreduce.output.tex" +
+					".toutputformat.separator", "\t");
 
-			job.setMapperClass(InitialMapper.class);
-			job.setCombinerClass(InitialCombiner.class);
-			job.setReducerClass(InitialReducer.class);
 
-//		job1.setMapOutputKeyClass(Text.class);
-//		job1.setMapOutputValueClass(IntWritable.class);
+            // Cached file passed as program argument
+			Path prevFolder = new Path(args[1], prevPath);
 
-			job.setOutputKeyClass(Text.class);
-			job.setOutputValueClass(IntWritable.class);
+			FileSystem fs = FileSystem.get(jobConf1);
+			FileStatus[] fileStatus = fs.listStatus(prevFolder);
+			for (FileStatus status : fileStatus) {
+				String filePath = status.getPath().toString();
+				if (!filePath.contains("SUCCESS") && !filePath.contains(".crc")) {
+					System.out.println(filePath);
+					job1.addCacheFile(new URI(status.getPath().toString()));
+				}
+			}
 
-			job.setInputFormatClass(TextInputFormat.class);
-			job.setOutputFormatClass(TextOutputFormat.class);
+            // Set Mapper Class
+            job1.setMapperClass(SecondMapper.class);
+            job1.setOutputKeyClass(Text.class);
+            job1.setOutputValueClass(IntWritable.class);
 
-			TextInputFormat.addInputPath(job, new Path(args[0]));
-			TextOutputFormat.setOutputPath(job, new Path(args[1], "K1"));
+            TextInputFormat.addInputPath(job1, new Path(args[0]));
+            TextOutputFormat.setOutputPath(job1, new Path(args[1], currPath));
 
-			job.waitForCompletion(true);
+            job1.waitForCompletion(true);
+            i = i + 1;
 		}
 
-		return job.waitForCompletion(true) ? 1 : 0;
+		return 0;
 	}
 
 

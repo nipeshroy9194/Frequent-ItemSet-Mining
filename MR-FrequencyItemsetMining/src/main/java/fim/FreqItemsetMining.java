@@ -75,8 +75,8 @@ public class FreqItemsetMining extends Configured implements Tool {
 			for(final IntWritable c : values)
 				sum += c.get();
 
-			//MinSupport should be greater than 3 (Need to find a good min_support value)
-			if(sum > 15000) {
+			//MinSupport for pruning
+			if(sum > 20_000) {
 				String str = "("+ key.toString() + ")";
 				context.write(new Text(str), new IntWritable(sum));
 			}

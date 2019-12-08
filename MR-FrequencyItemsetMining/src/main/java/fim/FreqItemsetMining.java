@@ -64,7 +64,7 @@ public class FreqItemsetMining extends Configured implements Tool {
 
 			//MinSupport should be greater than 3 (Need to find a good min_support value)
 			if(sum > 3) {
-				StringBuffer sb = new StringBuffer("(").append(key.toString()).append(")");
+				StringBuilder sb = new StringBuilder("(").append(key.toString()).append(")");
 				context.write(new Text(sb.toString()), new IntWritable(sum));
 			}
 		}
@@ -77,18 +77,7 @@ public class FreqItemsetMining extends Configured implements Tool {
 	 */
 	public static class SecondMapper extends Mapper<Object, Text, Text, IntWritable> {
 		List<Integer[]> cached = new ArrayList<>();
-//        Set<Integer[]> cached = new TreeSet<>(new Comparator<Integer[]>() {
-//            @Override
-//            public int compare(Integer[] o1, Integer[] o2) {
-//                Arrays.sort(o1);
-//                Arrays.sort(o2);
-//                for(int i=0; i<o1.length; i++) {
-//                    if(o1[i]==o2[i]) continue;
-//                    return o1[i].compareTo(o2[i]);
-//                }
-//                return 0;
-//            }
-//        });
+
 		// TODO: Handle file cache
 //		@Override
 //		protected void setup(final Context context) throws IOException, InterruptedException {
@@ -107,18 +96,23 @@ public class FreqItemsetMining extends Configured implements Tool {
 //				br.close();
 //			}
 //		}
-
 		/**
 		 *
 		 */
 		@Override
 		public void map(final Object key, final Text value, final Context context) throws IOException, InterruptedException {
 			final StringTokenizer itr = new StringTokenizer(value.toString());
+			final Set<Integer[]> candidates = this.generateCandidates();
+
 			while (itr.hasMoreTokens()) {
+				Integer[] items = this.stringToArray(itr.nextToken());
 				String token = itr.nextToken();
-				String[] items = itr.nextToken().split(",");
-				for(String item: items)
-					context.write(new Text(item), new IntWritable(1));
+				Arrays.sort(items);
+				Set<Integer[]> itemSets = this.generateItemsets(items, candidates.iterator().next().length);
+				for(Integer[] itemSet: itemSets) {
+					if(candidates.contains(itemSet))
+						context.write(new Text(this.arrayToString(itemSet)), new IntWritable(1));
+				}
 			}
 		}
 
@@ -176,9 +170,26 @@ public class FreqItemsetMining extends Configured implements Tool {
 			return tempCache;
 		}
 
-		private void selfJoinm2() {
+		private Set<Integer[]> generateItemsets(Integer[] items, int k) {
+		    Set<Integer[]> itemSet= new HashSet<>();
+            Integer[] data = new Integer[k];
+            createCombinations(items, items.length, k, 0, data, 0, itemSet);
 
-		}
+            return itemSet;
+        }
+
+        static void createCombinations(Integer[] items, int N, int K, int index, Integer[] set, int i, Set<Integer[]> itemSet)
+        {
+            if (index == K) {
+                itemSet.add(set.clone());
+                return;
+            }
+            if (i >= N) return;
+
+            set[index] = items[i];
+            createCombinations(items, N, K, index + 1, set, i + 1, itemSet);
+            createCombinations(items, N, K, index, set, i + 1, itemSet);
+        }
 	}
 
 	// ***************************************************************************

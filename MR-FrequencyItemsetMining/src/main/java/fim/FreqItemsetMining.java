@@ -67,7 +67,7 @@ public class FreqItemsetMining extends Configured implements Tool {
 				sum += c.get();
 
 			//MinSupport should be greater than 3 (Need to find a good min_support value)
-			if(sum > 3) {
+			if(sum > 0) {
 				StringBuilder sb = new StringBuilder("(").append(key.toString()).append(")");
 				context.write(new Text(sb.toString()), new IntWritable(sum));
 			}
@@ -119,11 +119,11 @@ public class FreqItemsetMining extends Configured implements Tool {
         }
 
         private String arrayToString(Integer[] items) {
-            StringBuilder sb = new StringBuilder("(");
+            StringBuilder sb = new StringBuilder();
             for(Integer item: items)
                 sb.append(item).append(",");
             sb.deleteCharAt(sb.length() - 1);
-            sb.append(")");
+//            sb.append(")");
             return sb.toString();
         }
 
@@ -136,8 +136,8 @@ public class FreqItemsetMining extends Configured implements Tool {
 			final Set<Integer[]> candidates = this.generateCandidates();
 
 			while (itr.hasMoreTokens()) {
+				itr.nextToken();
 				Integer[] items = this.stringToArray(itr.nextToken());
-				String token = itr.nextToken();
 				Arrays.sort(items);
 				Set<Integer[]> itemSets = this.generateItemsets(items, candidates.iterator().next().length);
 				for(Integer[] itemSet: itemSets) {
@@ -212,7 +212,7 @@ public class FreqItemsetMining extends Configured implements Tool {
 	@Override
 	public int run(final String[] args) throws Exception {
 		/* MR job to compute itemset frequencies for k = 1 */
-        Integer K = 2;
+        Integer K = 3;
 		final Configuration conf = getConf();
 		Job job = Job.getInstance(conf, "K1");
 		job.setJarByClass(FreqItemsetMining.class);
@@ -264,6 +264,8 @@ public class FreqItemsetMining extends Configured implements Tool {
 
             // Set Mapper Class
             job1.setMapperClass(SecondMapper.class);
+			job1.setCombinerClass(InitialCombiner.class);
+			job1.setReducerClass(InitialReducer.class);
             job1.setOutputKeyClass(Text.class);
             job1.setOutputValueClass(IntWritable.class);
 

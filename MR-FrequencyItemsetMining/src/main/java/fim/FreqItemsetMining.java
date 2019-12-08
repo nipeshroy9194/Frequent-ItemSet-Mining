@@ -67,7 +67,7 @@ public class FreqItemsetMining extends Configured implements Tool {
 				sum += c.get();
 
 			//MinSupport should be greater than 3 (Need to find a good min_support value)
-			if(sum > 0) {
+			if(sum > 10000) {
 				StringBuilder sb = new StringBuilder("(").append(key.toString()).append(")");
 				context.write(new Text(sb.toString()), new IntWritable(sum));
 			}
@@ -212,7 +212,7 @@ public class FreqItemsetMining extends Configured implements Tool {
 	@Override
 	public int run(final String[] args) throws Exception {
 		/* MR job to compute itemset frequencies for k = 1 */
-        Integer K = 3;
+        Integer K = 2;
 		final Configuration conf = getConf();
 		Job job = Job.getInstance(conf, "K1");
 		job.setJarByClass(FreqItemsetMining.class);
@@ -245,8 +245,7 @@ public class FreqItemsetMining extends Configured implements Tool {
             final Job job1 = Job.getInstance(conf, currPath);
             job1.setJarByClass(FreqItemsetMining.class);
             final Configuration jobConf1 = job1.getConfiguration();
-            jobConf1.set("mapreduce.output.tex" +
-					".toutputformat.separator", "\t");
+            jobConf1.set("mapreduce.output.text.outputformat.separator", "\t");
 
 
             // Cached file passed as program argument
@@ -270,7 +269,10 @@ public class FreqItemsetMining extends Configured implements Tool {
             job1.setOutputValueClass(IntWritable.class);
 
             TextInputFormat.addInputPath(job1, new Path(args[0]));
-            TextOutputFormat.setOutputPath(job1, new Path(args[1], currPath));
+            if(i!=K)
+            	TextOutputFormat.setOutputPath(job1, new Path(args[1], currPath));
+            else
+				TextOutputFormat.setOutputPath(job1, new Path(args[2]));
 
             job1.waitForCompletion(true);
             i = i + 1;
@@ -281,7 +283,7 @@ public class FreqItemsetMining extends Configured implements Tool {
 
 
 	public static void main(final String[] args) {
-		if (args.length != 2) {
+		if (args.length != 3) {
 			throw new Error("Two arguments required:\n<input-dir> <output-dir>");
 		}
 

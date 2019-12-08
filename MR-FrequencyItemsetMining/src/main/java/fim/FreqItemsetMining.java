@@ -138,7 +138,7 @@ public class FreqItemsetMining extends Configured implements Tool {
                 @Override
                 public int compare(Integer[] o1, Integer[] o2) {
                     for(int i=0; i<o1.length; i++) {
-                        if(o1[i]==o2[i]) continue;
+                        if(o1[i].equals(o2[i])) continue;
                         return o1[i].compareTo(o2[i]);
                     }
                     return 0;

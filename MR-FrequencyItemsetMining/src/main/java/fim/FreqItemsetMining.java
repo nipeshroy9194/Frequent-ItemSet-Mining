@@ -67,7 +67,7 @@ public class FreqItemsetMining extends Configured implements Tool {
 				sum += c.get();
 
 			//MinSupport should be greater than 3 (Need to find a good min_support value)
-			if(sum > 10000) {
+			if(sum > 25000) {
 				StringBuilder sb = new StringBuilder("(").append(key.toString()).append(")");
 				context.write(new Text(sb.toString()), new IntWritable(sum));
 			}
@@ -139,7 +139,17 @@ public class FreqItemsetMining extends Configured implements Tool {
 				itr.nextToken();
 				Integer[] items = this.stringToArray(itr.nextToken());
 				Arrays.sort(items);
-				Set<Integer[]> itemSets = this.generateItemsets(items, candidates.iterator().next().length);
+				Iterator<Integer[]> itrC = candidates.iterator();
+				int K = -1;
+				while(itrC.hasNext()) {
+					Integer[] c = itrC.next();
+					if(c != null) {
+						K = c.length;
+						break;
+					}
+				}
+
+				Set<Integer[]> itemSets = this.generateItemsets(items, K);
 				for(Integer[] itemSet: itemSets) {
 					if(candidates.contains(itemSet))
 						context.write(new Text(this.arrayToString(itemSet)), new IntWritable(1));
@@ -212,7 +222,7 @@ public class FreqItemsetMining extends Configured implements Tool {
 	@Override
 	public int run(final String[] args) throws Exception {
 		/* MR job to compute itemset frequencies for k = 1 */
-        Integer K = 2;
+        Integer K = 3;
 		final Configuration conf = getConf();
 		Job job = Job.getInstance(conf, "K1");
 		job.setJarByClass(FreqItemsetMining.class);

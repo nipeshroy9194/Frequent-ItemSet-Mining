@@ -67,7 +67,7 @@ public class FreqItemsetMining extends Configured implements Tool {
 				sum += c.get();
 
 			//MinSupport should be greater than 3 (Need to find a good min_support value)
-			if(sum > 25000) {
+			if(sum > 20000) {
 				StringBuilder sb = new StringBuilder("(").append(key.toString()).append(")");
 				context.write(new Text(sb.toString()), new IntWritable(sum));
 			}
@@ -89,7 +89,7 @@ public class FreqItemsetMining extends Configured implements Tool {
             Path[] cacheFiles = context.getLocalCacheFiles();
             if(cacheFiles != null && cacheFiles.length > 0) {
                 for(Path cacheFile : cacheFiles) {
-                	System.out.println(cacheFile.toString());
+                    System.out.println(cacheFile.toString());
                     readFile(cacheFile);
                 }
             }
@@ -140,7 +140,7 @@ public class FreqItemsetMining extends Configured implements Tool {
 				Integer[] items = this.stringToArray(itr.nextToken());
 				Arrays.sort(items);
 				Iterator<Integer[]> itrC = candidates.iterator();
-				int K = -1;
+				int K = 0;
 				while(itrC.hasNext()) {
 					Integer[] c = itrC.next();
 					if(c != null) {
@@ -168,7 +168,7 @@ public class FreqItemsetMining extends Configured implements Tool {
                     return 0;
                 }
             });
-		    int common = cached.get(0).length-1;
+		    int common = cached.size() > 0 ? cached.get(0).length-1 : 0;
 
             for(int i=0; i<cached.size();i++)
                 for(int j=i+1; j<cached.size(); j++) {
@@ -176,7 +176,7 @@ public class FreqItemsetMining extends Configured implements Tool {
                     Integer[] c2 = cached.get(j);
                     boolean flag = true;
                     for(int k=0; k<common; k++) {
-                        if(c1[k] != c2[k]) {
+                        if(!c1[k].equals(c2[k])) {
                             flag = false;
                             break;
                         }
@@ -188,6 +188,7 @@ public class FreqItemsetMining extends Configured implements Tool {
                             tempCandidate[k] = c1[k];
                         tempCandidate[tempCandidate.length-1] = c2[c2.length-1];
                         Arrays.sort(tempCandidate);
+
                         tempCache.add(tempCandidate);
                     }
                 }
